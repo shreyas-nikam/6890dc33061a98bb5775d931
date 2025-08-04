@@ -184,3 +184,13 @@ Furthermore, predicted PDs must be calibrated against observed default frequenci
 *   **Default Definition:** Implement a parameter-driven default flag (90-days-past-due by default, but configurable).
 *   **Segmentation:** Implement obligor segmentation by industry (Manufacturing vs. Services) and size (Small vs. Large). Simulate industry segment by k-means clustering on spending patterns
 *   **Hand-off Checklist:** Display a hand-off checklist at the end of the notebook, including file paths of saved artifacts, grade definitions, and the exact default-definition parameter value.
+
+**Hand-off Checklist Table:**
+
+| Artefact to be saved                                                                                                    | Source & Fields                                                                                                | Purpose                                               |
+| :---------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------- |
+| **models & pipelines** (`rating_logreg_v1.pkl`, `rating_gbt_v1.pkl`, `preprocess_v1.pkl`, `grade_cutoffs_v1.csv`) | Output of Part 1                                                                                             | Baseline for every validation & monitoring test      |
+| **Out-of-time (OOT) sample**                                                                                           | Remaining 30 % hold-out from Part 1 **or** new snapshot (e.g. most-recent year) with same schema                 | Measure performance degradation & recalibration need |
+| **Quarterly portfolio snapshots**                                                                                      | CSV per quarter: `snap_YYYYQ.csv` containing *obligor\_id, snapshot\_date, current\_grade, realised\_default\_flag* | Compute PSI, grade migrations, realised default vs PD|
+| **Override log**                                                                                                       | `overrides.csv`: *obligor\_id, override\_date, model\_grade, final\_grade, reason\_code, approver\_id*             | Monitor expert overrides & build override matrix     |
+| **Model inventory record**                                                                                             | YAML template `model_inventory_entry.yaml` with model\_id, tier, owner, validator, last\_validated, next\_due      | Governance registration requirement                  |
