@@ -1,130 +1,186 @@
 
-# Jupyter Notebook Specification: Wholesale Credit Rating Model
+# Credit Risk Analyzer and Rating System - Jupyter Notebook Specification
 
 ## 1. Notebook Overview
 
-**Learning Goals:**
+### Learning Goals
+*   Understand the principles of building a wholesale credit rating model.
+*   Learn data ingestion, cleaning, and preprocessing techniques specific to credit risk datasets.
+*   Master feature engineering for credit risk modeling, including financial ratio calculation and qualitative factor incorporation.
+*   Develop and compare different machine learning models for credit risk prediction.
+*   Calibrate model outputs to create a rating scale and align predicted probabilities with observed default rates.
+*   Comprehend the importance of reproducibility and model documentation in credit risk modeling.
 
-This notebook aims to guide users through the process of building a comprehensive wholesale credit rating model, from data ingestion and pre-processing to model calibration and documentation. Users will learn to:
-
-*   Ingest, clean, and quality-check raw wholesale-style credit data.
-*   Define and justify a regulatory-sound default flag.
-*   Segment obligors by industry and size and test segment homogeneity.
-*   Engineer quantitative and qualitative credit-risk features.
-*   Run univariate diagnostic analysis to select predictive variables.
-*   Build, tune, and compare logistic regression and tree-based models.
-*   Implement a proper development/validation protocol.
-*   Convert point PDs into an 8-grade internal rating scale.
-*   Calibrate model PDs to observed defaults.
-*   Document every modelling step to regulatory standards.
-*   Link ratings to business uses and regulatory expectations.
-
-**Expected Outcomes:**
-
-By the end of this notebook, users will be able to:
-
-*   Develop a fully functional wholesale credit rating model.
-*   Understand the theoretical underpinnings of credit risk modelling.
-*   Apply best practices in data quality and model validation.
-*   Create documentation suitable for regulatory review.
-*   Connect model outputs to practical business applications.
+### Expected Outcomes
+Upon completion of this notebook, users will be able to:
+*   Ingest and prepare credit risk data for modeling.
+*   Engineer relevant features from raw data.
+*   Develop and evaluate credit risk models, including logistic regression and tree-based models.
+*   Map predicted default probabilities to a credit rating scale.
+*   Document the entire modeling process for reproducibility and auditability.
+*   Demonstrate an understanding of the key components of a credit rating model and their impact on risk assessment.
 
 ## 2. Mathematical and Theoretical Foundations
 
-This section will provide a clear explanation of the key mathematical concepts used in credit risk modelling, with strict adherence to LaTeX formatting rules:
+### 2.1. Default Probability (PD)
 
-*   **Logistic Regression:**
-    The logistic regression model estimates the probability of default $P(Default)$ as a function of explanatory variables $X$:
-    $$P(Default) = \frac{1}{1 + e^{-(\beta_0 + \beta^T X)}}$$
-    where $\beta_0$ is the intercept and $\beta$ are the coefficients.  The goal is to estimate these coefficients to best fit the observed default data. This requires maximizing a likelihood function or minimizing a loss function.
+The foundation of credit risk modeling is the estimation of the probability of default (PD).
 
-*   **Area Under the ROC Curve (AUC):**
-    AUC measures the ability of a model to discriminate between defaulting and non-defaulting obligors.  It represents the probability that a randomly chosen defaulting obligor will have a higher predicted probability of default than a randomly chosen non-defaulting obligor.  An AUC of 1 indicates perfect discrimination, while an AUC of 0.5 indicates no discrimination. The AUC can be calculated as the area under the Receiver Operating Characteristic (ROC) curve, which plots the true positive rate (sensitivity) against the false positive rate (1-specificity) at various threshold settings.
+$$
+PD = P(\text{Obligor defaults within a specified time horizon})
+$$
 
-*   **Gini Coefficient:**
-    The Gini coefficient is another measure of discriminatory power. It is related to the AUC by the formula:
-    $$Gini = 2 \cdot AUC - 1$$
-    A Gini coefficient of 1 indicates perfect discrimination, while a Gini of 0 indicates no discrimination. The Gini coefficient can be visually interpreted as the area between the ROC curve and the line of equality (the diagonal line representing random chance).
+This is a conditional probability, often estimated using statistical or machine learning models based on obligor characteristics.
 
-*   **Variance Inflation Factor (VIF):**
-    VIF quantifies the severity of multicollinearity in a regression model. The VIF for the $i$-th predictor is calculated as:
-    $$VIF_i = \frac{1}{1 - R_i^2}$$
-    where $R_i^2$ is the coefficient of determination for the regression of the $i$-th predictor on all other predictors. A VIF value greater than 5 or 10 (depending on the chosen threshold) suggests that multicollinearity may be a problem.
+### 2.2. Financial Ratios
 
-*   **Population Stability Index (PSI):**
+Financial ratios are key indicators of an obligor's financial health. Examples include:
 
-    The PSI measures the shift in the distribution of obligors across rating grades between two time periods (e.g., development sample and validation sample). It is calculated as:
+*   **Return on Assets (ROA):** Measures profitability relative to total assets.
+    $$
+    ROA = \frac{\text{Net Income}}{\text{Total Assets}}
+    $$
+    A higher ROA generally indicates better financial performance.
 
-    $$PSI = \sum_{i=1}^{N} (Actual\%_i - Expected\%_i) \cdot \ln\left(\frac{Actual\%_i}{Expected\%_i}\right)$$
+*   **Debt-to-Equity Ratio:** Measures the proportion of debt used to finance assets relative to equity.
+    $$
+    \text{Debt-to-Equity} = \frac{\text{Total Debt}}{\text{Shareholders' Equity}}
+    $$
+    A higher ratio indicates higher leverage and potentially higher risk.
 
-    where $Actual\%_i$ is the percentage of obligors in rating grade $i$ in the validation sample, $Expected\%_i$ is the percentage of obligors in rating grade $i$ in the development sample, and $N$ is the number of rating grades. A higher PSI indicates a greater shift in the distribution. A PSI above 0.1 may warrant further investigation, while a PSI above 0.25 suggests a significant shift that may require model recalibration.
-    
-*   **Hosmer-Lemeshow Test:**
-    The Hosmer-Lemeshow test assesses the calibration of a logistic regression model. It divides the predicted probabilities into $g$ groups (e.g., deciles) and compares the observed number of defaults in each group to the expected number of defaults based on the predicted probabilities. The test statistic is calculated as:
-    $$H = \sum_{i=1}^{g} \frac{(O_i - E_i)^2}{N_i \pi_i (1-\pi_i)}$$
+*   **Liquidity Ratios:**  Assess an obligor's ability to meet short-term obligations. The Current Ratio:
+    $$
+    \text{Current Ratio} = \frac{\text{Current Assets}}{\text{Current Liabilities}}
+    $$
+    A higher current ratio is better and shows the company is able to cover short-term debts.
 
-    where $O_i$ is the observed number of defaults in group $i$, $E_i$ is the expected number of defaults in group $i$, $N_i$ is the number of obligors in group $i$, and $\pi_i$ is the average predicted probability of default in group $i$. The test statistic follows a chi-square distribution with $g-2$ degrees of freedom. A p-value below a chosen significance level (e.g., 0.05) suggests that the model is poorly calibrated.
+*   **Cash Flow Coverage Ratio:** Measures an obligor's ability to cover debt obligations with cash flow.
+    $$
+    \text{Cash Flow Coverage} = \frac{\text{EBITDA}}{\text{Interest Expense}}
+    $$
+    A higher ratio indicates better debt-servicing capacity.
 
-    **Real-World Applications:**
+### 2.3. Logistic Regression
 
-*   *Logistic Regression:* Widely used in credit scoring and PD estimation due to its interpretability and ease of implementation.
-*   *AUC & Gini:* Used to compare the performance of different models and to assess the riskiness of a portfolio.
-*   *VIF:* Essential for ensuring the stability and interpretability of regression models.
-*   *PSI:* Used to monitor the stability of a credit scoring model over time.
-*   *Hosmer-Lemeshow:* Used to make sure our model is well-calibrated.
+Logistic regression is a statistical model that predicts the probability of a binary outcome (e.g., default or no default). The model uses a logistic function to map the linear combination of predictor variables to a probability between 0 and 1.
 
-*   **Derivations:**
-    The notebook will provide step-by-step derivations of the key formulas and concepts as needed. For example, the derivation of the logistic regression likelihood function will be included.
+$$
+P(Y=1|X) = \frac{1}{1 + e^{-(\beta_0 + \beta_1X_1 + ... + \beta_nX_n)}}
+$$
+
+Where:
+
+*   $P(Y=1|X)$ is the probability of default given the predictor variables $X$.
+*   $\beta_0$ is the intercept.
+*   $\beta_1, ..., \beta_n$ are the coefficients for the predictor variables $X_1, ..., X_n$.
+
+### 2.4. Gradient-Boosted Trees
+
+Gradient-boosted trees are an ensemble learning method that combines multiple decision trees to create a strong predictive model.  The algorithm iteratively builds trees, with each tree correcting the errors of its predecessors.  This approach can capture complex non-linear relationships in the data.
+
+### 2.5. Gini Coefficient and AUC
+
+The Gini coefficient and Area Under the ROC Curve (AUC) are performance metrics used to evaluate the discriminatory power of a credit risk model.  They quantify the model's ability to distinguish between defaulters and non-defaulters.
+
+The Gini coefficient is defined as:
+
+$$
+Gini = 2 * AUC - 1
+$$
+
+Where AUC is the area under the Receiver Operating Characteristic (ROC) curve. A higher Gini coefficient or AUC indicates better model performance.
+
+### 2.6. Variance Inflation Factor (VIF)
+
+Variance Inflation Factor (VIF) is a measure of multicollinearity in a regression model. It quantifies how much the variance of an estimated regression coefficient increases due to multicollinearity.
+
+$$
+VIF_i = \frac{1}{1 - R_i^2}
+$$
+
+Where $R_i^2$ is the coefficient of determination for the regression of the $i$-th predictor on all other predictors. A VIF value greater than 5 or 10 (depending on the context) suggests high multicollinearity.
+
+### 2.7 Rating Grade Mapping and Calibration
+
+The credit rating model outputs predicted PDs. In many practical scenarios, these PDs must be mapped to a set of ordinal credit rating grades. For instance, a bank may use a rating scale ranging from AAA to D.
+
+Furthermore, predicted PDs must be calibrated against observed default frequencies to ensure that the model's predicted default probabilities align with the actual default experience.
 
 ## 3. Code Requirements
 
-*   **Expected Libraries:**
-    *   `pandas`: For data manipulation and analysis.
-    *   `numpy`: For numerical computations.
-    *   `scikit-learn`: For model building, evaluation, and data splitting. Used for Logistic Regression, Random Forest, and Gradient Boosting Machine models. Also, used for cross-validation techniques.
-    *   `matplotlib` and `seaborn`: For data visualization.
-    *   `statsmodels`: For statistical modelling, including VIF calculation.
+### 3.1. Expected Libraries
 
-*   **Library Usage:**
-    *   `pandas` will be used to load, clean, and transform the credit data.
-    *   `numpy` will be used for numerical operations, such as calculating ratios and winsorizing outliers.
-    *   `scikit-learn` will be used to build and evaluate the logistic regression, random forest, and gradient boosting machine models. Functions for cross-validation, data splitting, and performance metrics will be utilized.
-    *   `matplotlib` and `seaborn` will be used to create visualizations of the data, model performance, and rating scale mapping.
-    *   `statsmodels` will be used to calculate VIF values to detect multicollinearity.
+*   **pandas:**  For data manipulation and analysis.  Used to load, clean, and transform the UCI Taiwan Credit Default dataset.
+*   **numpy:**  For numerical computations. Used for array operations and mathematical functions, especially in feature engineering and model evaluation.
+*   **sklearn (scikit-learn):**  For machine learning algorithms, model evaluation, and data preprocessing. Used for logistic regression, gradient-boosted trees, data splitting, cross-validation, and calculating performance metrics like AUC and Gini.
+*   **matplotlib and seaborn:**  For data visualization. Used to generate ROC curves, calibration plots, histograms of rating grades, and other visualizations for model exploration and presentation.
+*   **statsmodels:** For statistical modeling, including logistic regression and VIF calculation.
+*   **yaml:** For reading and writing YAML files for data logging and model inventory.
+*   **pickle:**  For saving and loading trained models and preprocessing pipelines.
 
-*   **Input/Output Expectations:**
+### 3.2. Input/Output Expectations
 
-    *   **Input:** The notebook will expect a CSV file containing financial statement data and a default flag. The specific columns required are detailed in the "datasetDetails" section of the prompt, including profitability ratios, leverage ratios, liquidity ratios, a management experience score, industry, size, and a default flag.
-    *   **Output:** The notebook will produce a credit rating model, visualizations of the data and model performance, a mapping of PDs to rating grades, and a calibration report. The model will output predicted probabilities of default (PDs) for each obligor.  These PDs will then be mapped to an 8-grade rating scale. The notebook will also generate a comprehensive model documentation report.
+*   **Input:**
+    *   UCI Taiwan Credit Default dataset (CSV format).
+*   **Outputs:**
+    *   Preprocessed dataset (pandas DataFrame).
+    *   Trained logistic regression model (pickle file).
+    *   Trained gradient-boosted trees model (pickle file).
+    *   Preprocessing pipeline (pickle file).
+    *   Rating grade cutoffs (CSV file).
+    *   Data log (YAML file).
+    *   Model inventory record (YAML file).
+    *   Model documentation (PDF report – this will be achieved by downloading the notebook as PDF)
+    *   Various visualizations (charts and plots).
 
-*   **Algorithms and Functions (Without Code):**
+### 3.3. Algorithms and Functions to be Implemented
 
-    *   **Data Quality Checks:** A function to identify and handle missing values using median imputation. Another function to winsorize outliers (capping extreme values). A function to detect and reject impossible values (e.g., negative assets). These functions must track adjustments in a data log.
-    *   **Segmentation:** A function to assign obligors to segments based on industry and size. Statistical tests (e.g., t-tests or chi-squared tests) should be implemented to verify segment homogeneity.
-    *   **Feature Engineering:** Functions to calculate financial ratios from the dataset.  A function to create a synthetic management quality score. A function to apply quantile binning to continuous variables.
-    *   **Univariate Analysis:** Functions to calculate bucket-level default rates, AUC, and Gini for each predictor.
-    *   **Model Building:** Functions to build, train, and evaluate logistic regression, random forest, and gradient boosting machine models. These will include hyperparameter tuning via cross-validation. VIF calculation to detect and mitigate multicollinearity.
-    *   **Rating Scale Mapping:** A function to map point PDs to an 8-grade internal rating scale using quantile cut-offs. This will need to balance the number of obligors and defaults in each grade.
-    *   **Calibration:** A function to calibrate model PDs to observed defaults, including the option to add a calibration intercept or scaling factor.
-    *   **Model Documentation:** A function to generate a comprehensive model documentation report, following MMG standards.
+*   **Data Ingestion and Cleaning:**
+    *   Function to load the dataset from CSV.
+    *   Function to perform data quality checks (missing values, outliers).
+    *   Function to impute missing values using median imputation.
+    *   Function to winsorize outlier values.
+    *   Function to create a data log recording all data transformations.
+*   **Feature Engineering:**
+    *   Function to calculate financial ratios (ROA, Debt-to-Equity, etc.).
+    *   Function to create a synthetic "Management Experience Score".
+    *   Function to transform skewed variables using quantile binning.
+*   **Model Development:**
+    *   Function to split the dataset into training and validation sets (stratified split).
+    *   Function to train a logistic regression model.
+    *   Function to train a gradient-boosted trees model.
+    *   Function to calculate VIF values for multicollinearity assessment.
+*   **Model Evaluation:**
+    *   Function to calculate AUC and Gini coefficient.
+    *   Function to generate ROC curves.
+    *   Function to generate Hosmer-Lemeshow calibration plots.
+*   **Rating Grade Mapping and Calibration:**
+    *   Function to map predicted PDs to rating grades using a quantile-based approach.
+    *   Function to calibrate PDs to observed default rates.
+*   **Documentation and Archiving:**
+    *   Function to save trained models, preprocessing pipelines, and rating grade cutoffs.
+    *   Function to create a model inventory record.
+    *   Function to generate a model documentation report.
 
-*   **Visualizations:**
+### 3.4. Visualizations
 
-    *   **Data Quality:** Bar/heat-map of missing-value percentages per variable. Box/violin plots before & after winsorisation.
-    *   **Segmentation:** Side-by-side bar chart or heat-map of default rates by (Industry × Size) segment.
-    *   **Univariate Analysis:** Bucketed default-rate line or bar plots for each predictor. ROC / AUC table for single-variable discriminatory power; optional Gini bar chart.
-    *   **Model Performance:** ROC curves (train vs validation) for logistic, GBM, RF. Calibration (prediction-vs-observed) curve / bin plot.
-    *   **Multicollinearity:** Correlation heat-map; table of VIF values.
-    *   **Rating Scale Mapping:** Histogram of raw PDs with vertical grade cut-offs. Stacked bar chart: number of obligors & observed defaults per grade.
-    *   **PD Calibration:** Line plot of calibrated vs raw PDs. Lift / gain chart or accuracy ratio plot.
-    *   **Executive Summary:** Pie or bar chart of exposure distribution across grades.
+*   **Model Discrimination:**
+    *   ROC curve & AUC / Gini summary (dev & val).
+*   **Calibration:**
+    *   Hosmer-Lemeshow bar-line chart and calibration curve (PD vs actual).
+*   **Feature Exploration:**
+    *   Univariate KS/AUC bar chart per predictor.
+*   **Multicollinearity:**
+    *   Heat-map of VIF values ≥ 5 highlighted.
+*   **Rating-grade design:**
+    *   Histogram of obligor counts per proposed grade & overlay of observed default rate.
+*   **PD distribution:**
+    *   Density plot before and after calibration.
 
 ## 4. Additional Notes or Instructions
 
-*   **Assumptions:** The notebook assumes that the input data is in a structured format (e.g., CSV) and contains the necessary financial statement information and default flag.  It also assumes that users have a basic understanding of credit risk modelling and statistical concepts.
-*   **Constraints:**  The notebook is designed to be a self-contained tutorial.
-*   **Customization:**  The notebook will be designed to be easily customizable. Users will be able to modify the default definition, segmentation criteria, feature engineering steps, model parameters, and rating scale mapping.  A configuration section at the beginning of the notebook will allow users to adjust these parameters.
-*   **Regulatory Compliance:** The notebook will emphasize the importance of meeting UAE regulatory guidance for internal rating systems.  The narrative will highlight how every modelling decision aligns with these requirements, including the choice of default threshold, segmentation logic, and long-run PD calibration. The model documentation will specifically address these regulatory considerations.
-*   **Reproducibility:** The notebook will provide code cells that reproduce each step of the model development process, enabling independent validation and auditing. A clear and concise code ensures it is easy to rerun from start to end.
-*   **Model Choice Rationale:** We will emphasize transparency & regulatory acceptance, logistic expected to be champion unless tree-based offers “significantly better fit without overfitting”.
-
+*   **Reproducibility:** Set a fixed random seed (`numpy.random.seed(42)`) for all random processes to ensure reproducibility.
+*   **Data-logging & archiving:** Maintain a YAML data-log recording every transformation for audit purposes.
+*   **Default Definition:** Implement a parameter-driven default flag (90-days-past-due by default, but configurable).
+*   **Segmentation:** Implement obligor segmentation by industry (Manufacturing vs. Services) and size (Small vs. Large). Simulate industry segment by k-means clustering on spending patterns
+*   **Hand-off Checklist:** Display a hand-off checklist at the end of the notebook, including file paths of saved artifacts, grade definitions, and the exact default-definition parameter value.
