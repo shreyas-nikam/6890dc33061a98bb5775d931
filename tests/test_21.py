@@ -1,121 +1,91 @@
 import pytest
-from definition_a663463700ad4eebb91e98c462f8dddb import create_model_inventory_record
+from definition_1697a66305ba4737ae9e2ab89ed0854f import create_model_inventory_record
 import yaml
-import os
+from datetime import date
 
-def create_dummy_yaml(filepath, data):
-    with open(filepath, 'w') as f:
-        yaml.dump(data, f)
-
-@pytest.fixture
-def cleanup_yaml():
-    filepath = "test_inventory.yaml"
-    yield filepath
-    if os.path.exists(filepath):
-        os.remove(filepath)
-
-def test_create_model_inventory_record_valid(cleanup_yaml):
-    filepath = cleanup_yaml
+def test_create_model_inventory_record_valid():
     model_id = "model_001"
     tier = "Tier 1"
     owner = "John Doe"
     validator = "Jane Smith"
-    last_validated = "2023-01-01"
-    next_due = "2024-01-01"
-    
-    create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due, filepath)
-    
-    with open(filepath, 'r') as f:
-        data = yaml.safe_load(f)
-    
-    assert data['model_id'] == model_id
-    assert data['tier'] == tier
-    assert data['owner'] == owner
-    assert data['validator'] == validator
-    assert data['last_validated'] == last_validated
-    assert data['next_due'] == next_due
+    last_validated = date(2023, 1, 1)
+    next_due = date(2024, 1, 1)
 
-def test_create_model_inventory_record_empty_values(cleanup_yaml):
-    filepath = cleanup_yaml
+    record = create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due)
+
+    assert isinstance(record, str)
+    data = yaml.safe_load(record)
+    assert data["model_id"] == model_id
+    assert data["tier"] == tier
+    assert data["owner"] == owner
+    assert data["validator"] == validator
+    assert data["last_validated"] == last_validated.isoformat()
+    assert data["next_due"] == next_due.isoformat()
+
+def test_create_model_inventory_record_empty_values():
     model_id = ""
     tier = ""
     owner = ""
     validator = ""
-    last_validated = ""
-    next_due = ""
-    
-    create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due, filepath)
-    
-    with open(filepath, 'r') as f:
-        data = yaml.safe_load(f)
-    
-    assert data['model_id'] == model_id
-    assert data['tier'] == tier
-    assert data['owner'] == owner
-    assert data['validator'] == validator
-    assert data['last_validated'] == last_validated
-    assert data['next_due'] == next_due
+    last_validated = None
+    next_due = None
 
-def test_create_model_inventory_record_special_chars(cleanup_yaml):
-    filepath = cleanup_yaml
-    model_id = "model_@#$"
-    tier = "Tier !@#"
-    owner = "John Doe!@#"
-    validator = "Jane Smith!@#"
-    last_validated = "2023-01-01!@#"
-    next_due = "2024-01-01!@#"
-    
-    create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due, filepath)
-    
-    with open(filepath, 'r') as f:
-        data = yaml.safe_load(f)
-    
-    assert data['model_id'] == model_id
-    assert data['tier'] == tier
-    assert data['owner'] == owner
-    assert data['validator'] == validator
-    assert data['last_validated'] == last_validated
-    assert data['next_due'] == next_due
+    record = create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due)
+    data = yaml.safe_load(record)
 
-def test_create_model_inventory_record_long_strings(cleanup_yaml):
-    filepath = cleanup_yaml
-    model_id = "model_" + "a" * 200
-    tier = "Tier " + "b" * 200
-    owner = "John " + "c" * 200
-    validator = "Jane " + "d" * 200
-    last_validated = "2023-01-01" + "e" * 200
-    next_due = "2024-01-01" + "f" * 200
-    
-    create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due, filepath)
-    
-    with open(filepath, 'r') as f:
-        data = yaml.safe_load(f)
-    
-    assert data['model_id'] == model_id
-    assert data['tier'] == tier
-    assert data['owner'] == owner
-    assert data['validator'] == validator
-    assert data['last_validated'] == last_validated
-    assert data['next_due'] == next_due
+    assert data["model_id"] == model_id
+    assert data["tier"] == tier
+    assert data["owner"] == owner
+    assert data["validator"] == validator
+    assert data["last_validated"] is None
+    assert data["next_due"] is None
 
-def test_create_model_inventory_record_unicode(cleanup_yaml):
-    filepath = cleanup_yaml
-    model_id = "模型ID"
-    tier = "第一层"
-    owner = "约翰·多伊"
-    validator = "简·史密斯"
-    last_validated = "2023年1月1日"
-    next_due = "2024年1月1日"
+def test_create_model_inventory_record_none_dates():
+    model_id = "model_002"
+    tier = "Tier 2"
+    owner = "Alice Brown"
+    validator = "Bob Williams"
+    last_validated = None
+    next_due = None
 
-    create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due, filepath)
+    record = create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due)
 
-    with open(filepath, 'r', encoding='utf-8') as f:
-        data = yaml.safe_load(f)
+    assert isinstance(record, str)
+    data = yaml.safe_load(record)
 
-    assert data['model_id'] == model_id
-    assert data['tier'] == tier
-    assert data['owner'] == owner
-    assert data['validator'] == validator
-    assert data['last_validated'] == last_validated
-    assert data['next_due'] == next_due
+    assert data["model_id"] == model_id
+    assert data["tier"] == tier
+    assert data["owner"] == owner
+    assert data["validator"] == validator
+    assert data["last_validated"] is None
+    assert data["next_due"] is None
 
+def test_create_model_inventory_record_invalid_date_type():
+    model_id = "model_003"
+    tier = "Tier 3"
+    owner = "Eve White"
+    validator = "Charlie Green"
+    last_validated = "2023-01-01"
+    next_due = "2024-01-01"
+
+    with pytest.raises(TypeError):
+        create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due)
+
+def test_create_model_inventory_record_special_characters():
+    model_id = "model!@#$"
+    tier = "Tier %^&"
+    owner = "John.Doe"
+    validator = "Jane@Smith"
+    last_validated = date(2023, 2, 15)
+    next_due = date(2024, 2, 15)
+
+    record = create_model_inventory_record(model_id, tier, owner, validator, last_validated, next_due)
+
+    assert isinstance(record, str)
+    data = yaml.safe_load(record)
+    assert data["model_id"] == model_id
+    assert data["tier"] == tier
+    assert data["owner"] == owner
+    assert data["validator"] == validator
+    assert data["last_validated"] == last_validated.isoformat()
+    assert data["next_due"] == next_due.isoformat()
