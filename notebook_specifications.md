@@ -1,5 +1,5 @@
 
-# Credit Risk Analyzer and Rating System - Jupyter Notebook Specification
+# Credit Risk Rating Model Development - Jupyter Notebook Specification
 
 ## 1. Notebook Overview
 
