@@ -1,1 +1,67 @@
-# Starter Python file
+"""
+import streamlit as st
+import pandas as pd
+import numpy as np
+from ucimlrepo import fetch_ucirepo
+
+st.set_page_config(page_title="Credit Rating Model", layout="wide")
+st.sidebar.image("https://www.quantuniversity.com/assets/img/logo5.jpg")
+st.sidebar.divider()
+st.title("Wholesale Credit Rating Model Development")
+st.divider()
+
+st.markdown("""
+## Lab 1.1: Rating models - Development
+
+In this lab, we will develop a wholesale credit rating model using the UCI Taiwan Credit Default dataset. This application will allow you to interact with the data, explore feature engineering options, train and compare different machine learning models, and calibrate the model outputs to generate a credit rating scale. The objective of the application is to help you understand the model development process and to see how different parameters affect the outcome of the model.
+
+**Formulae and Explanations**
+
+Here, we will use financial ratios and statistical methods to build the credit rating model. Some key ratios include:
+
+*   **Return on Assets (ROA):** $$\\text{ROA} = \\frac{\\text{Net Income}}{\\text{Total Assets}}$$
+*   **Debt-to-Equity Ratio:** $$\\text{Debt-to-Equity} = \\frac{\\text{Total Debt}}{\\text{Shareholders\\\' Equity}}$$
+*   **Current Ratio:** $$\\text{Current Ratio} = \\frac{\\text{Current Assets}}{\\text{Current Liabilities}}$$
+*   **Cash Flow Coverage Ratio:** $$\\text{Cash Flow Coverage Ratio} = \\frac{\\text{EBITDA}}{\\text{Interest Expense}}$$
+
+These ratios help in assessing the financial health and risk profile of the credit applicants.
+
+**Data Transformations**
+
+We will apply several data transformations, including:
+
+*   **Missing Value Imputation:** Replacing missing values with the mean or median of the column.
+*   **Outlier Handling (Winsorization):** Capping extreme values at specified percentiles to reduce the impact of outliers.
+*   **Quantile Binning:** Transforming continuous variables into discrete bins based on quantiles.
+
+**Model Training and Evaluation**
+
+We will train and evaluate the following models:
+
+*   **Logistic Regression:** A linear model for binary classification.
+*   **Gradient Boosted Trees:** An ensemble model that combines multiple decision trees.
+*   **Random Forest:** Another ensemble model based on decision trees.
+
+Model performance will be evaluated using metrics such as AUC (Area Under the Curve) and Gini coefficient.
+
+**Model Calibration**
+
+Model calibration involves adjusting the predicted probabilities to match the observed default rates. This ensures that the model outputs are well-aligned with the actual risk.
+
+""")
+
+page = st.sidebar.selectbox(
+    label="Navigation",
+    options=["Data Exploration", "Feature Engineering", "Model Training"]
+)
+
+if page == "Data Exploration":
+    from application_pages.data_exploration import run_data_exploration
+    run_data_exploration()
+elif page == "Feature Engineering":
+    from application_pages.feature_engineering import run_feature_engineering
+    run_feature_engineering()
+elif page == "Model Training":
+    from application_pages.model_training import run_model_training
+    run_model_training()
+"""
