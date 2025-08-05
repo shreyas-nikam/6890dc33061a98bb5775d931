@@ -5,7 +5,7 @@
 
 ### Learning Goals
 *   Understand the principles of building a wholesale credit rating model.
-*   Learn data ingestion, cleaning, and preprocessing techniques specific to credit risk datasets.
+*   Learn data ingestion, cleaning, and preprocessing techniques specific to the UCI Taiwan Credit Risk Default dataset.
 *   Master feature engineering for credit risk modeling, including financial ratio calculation and qualitative factor incorporation.
 *   Develop and compare different machine learning models for credit risk prediction.
 *   Calibrate model outputs to create a rating scale and align predicted probabilities with observed default rates.
@@ -126,6 +126,27 @@ Furthermore, predicted PDs must be calibrated against observed default frequenci
 
 *   **Input:**
     *   UCI Taiwan Credit Default dataset (CSV format).
+    *   Install the library and import the dataset using the following code:
+```
+pip install ucimlrepo
+
+from ucimlrepo import fetch_ucirepo 
+  
+# fetch dataset 
+default_of_credit_card_clients = fetch_ucirepo(id=350) 
+  
+# data (as pandas dataframes) 
+X = default_of_credit_card_clients.data.features 
+y = default_of_credit_card_clients.data.targets 
+  
+# metadata 
+print(default_of_credit_card_clients.metadata) 
+  
+# variable information 
+print(default_of_credit_card_clients.variables) 
+
+```
+     * Use the dataset to explain the concepts below
 *   **Outputs:**
     *   Preprocessed dataset (pandas DataFrame).
     *   Trained logistic regression model (pickle file).
