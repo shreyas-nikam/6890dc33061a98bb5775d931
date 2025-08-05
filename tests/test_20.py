@@ -1,84 +1,38 @@
 import pytest
 import pandas as pd
-from definition_f8ad2dbe246e4bde9db171e4ca91d7c6 import save_rating_grade_cutoffs
+from definition_5840cd79decb462683db6fd3f71f1e3b import save_data
 import os
 
-def create_dummy_csv(filepath):
-    with open(filepath, 'w') as f:
-        f.write("Grade,Cutoff\n")
-        f.write("AAA,0.01\n")
-        f.write("AA,0.02\n")
+def test_save_data_valid_data(tmp_path):
+    file_path = tmp_path / "test_data.csv"
+    data = {'col1': [1, 2], 'col2': [3, 4]}
+    df = pd.DataFrame(data)
+    save_data(df, file_path)
+    assert os.path.exists(file_path)
 
-def read_dummy_csv(filepath):
-    with open(filepath, 'r') as f:
-        return f.read()
+def test_save_data_empty_dataframe(tmp_path):
+    file_path = tmp_path / "test_data.csv"
+    df = pd.DataFrame()
+    save_data(df, file_path)
+    assert os.path.exists(file_path)
 
+def test_save_data_different_data_types(tmp_path):
+    file_path = tmp_path / "test_data.csv"
+    data = {'col1': [1, 2], 'col2': ['a', 'b'], 'col3': [1.1, 2.2]}
+    df = pd.DataFrame(data)
+    save_data(df, file_path)
+    assert os.path.exists(file_path)
 
-@pytest.fixture
-def cleanup_file():
-    filepath = "test_cutoffs.csv"
-    if os.path.exists(filepath):
-        os.remove(filepath)
-    yield filepath  # Provide the filepath to the test
-    if os.path.exists(filepath):
-        os.remove(filepath)
+def test_save_data_non_dataframe_input(tmp_path):
+    file_path = tmp_path / "test_data.csv"
+    data = [1, 2, 3]
+    with pytest.raises(TypeError):
+        save_data(data, file_path)
 
-
-
-def test_save_rating_grade_cutoffs_valid_data(cleanup_file):
-    filepath = cleanup_file
-    cutoffs = pd.Series([0.01, 0.02, 0.03], index=['AAA', 'AA', 'A'])
-    save_rating_grade_cutoffs(cutoffs, filepath)
-    assert os.path.exists(filepath)
-
-    #verify contents
-    with open(filepath, 'r') as f:
-        content = f.read()
-
-    expected_content = "Grade,Cutoff\nAAA,0.01\nAA,0.02\nA,0.03\n"
-    assert content == expected_content
-
-
-def test_save_rating_grade_cutoffs_empty_series(cleanup_file):
-    filepath = cleanup_file
-    cutoffs = pd.Series([])
-    save_rating_grade_cutoffs(cutoffs, filepath)
-    assert os.path.exists(filepath)
-
-    #verify contents
-    with open(filepath, 'r') as f:
-        content = f.read()
-    expected_content = "Grade,Cutoff\n"
-    assert content == expected_content
-
-
-
-def test_save_rating_grade_cutoffs_non_string_index(cleanup_file):
-    filepath = cleanup_file
-    cutoffs = pd.Series([0.01, 0.02], index=[1, 2])  # Non-string index
-    save_rating_grade_cutoffs(cutoffs, filepath)
-    assert os.path.exists(filepath)
-    #verify contents
-    with open(filepath, 'r') as f:
-        content = f.read()
-    expected_content = "Grade,Cutoff\n1,0.01\n2,0.02\n"
-    assert content == expected_content
-
-def test_save_rating_grade_cutoffs_existing_file(cleanup_file):
-    filepath = cleanup_file
-    create_dummy_csv(filepath)  # Create the file before the test
-    initial_content = read_dummy_csv(filepath)
-    cutoffs = pd.Series([0.03, 0.04], index=['BBB', 'BB'])
-    save_rating_grade_cutoffs(cutoffs, filepath)
-
-    with open(filepath, 'r') as f:
-        content = f.read()
-    expected_content = "Grade,Cutoff\nBBB,0.03\nBB,0.04\n"
-    assert content == expected_content  # File should be overwritten
-
-
-def test_save_rating_grade_cutoffs_invalid_filepath():
-    filepath = "/invalid/path/cutoffs.csv"
-    cutoffs = pd.Series([0.01], index=['AAA'])
-    with pytest.raises(FileNotFoundError):
-        save_rating_grade_cutoffs(cutoffs, filepath)
+def test_save_data_invalid_file_path(tmp_path):
+    # Test with a directory path instead of a file path
+    file_path = tmp_path
+    data = {'col1': [1, 2], 'col2': [3, 4]}
+    df = pd.DataFrame(data)
+    with pytest.raises(ValueError):  # Expecting ValueError since we are checking if file_path is a string.
+        save_data(df, file_path)
