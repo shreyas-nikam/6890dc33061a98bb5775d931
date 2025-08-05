@@ -210,7 +210,7 @@ print(default_of_credit_card_clients.variables)
 *   **Data-logging & archiving:** Maintain a YAML data-log recording every transformation for audit purposes.
 *   **Default Definition:** Implement a parameter-driven default flag (90-days-past-due by default, but configurable).
 *   **Segmentation:** Implement obligor segmentation by industry (Manufacturing vs. Services) and size (Small vs. Large). Simulate industry segment by k-means clustering on spending patterns
-*   **Hand-off Checklist:** Display a hand-off checklist at the end of the notebook, including file paths of saved artifacts, grade definitions, and the exact default-definition parameter value.
+*   **Hand-off Checklist:** Display a hand-off checklist at the end of the notebook, including file paths of saved artifacts, grade definitions, and the exact default-definition parameter value. The following needs to be generated and saved compulsorily:
 
 **Hand-off Checklist Table:**
 
