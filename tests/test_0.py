@@ -1,33 +1,52 @@
 import pytest
 import pandas as pd
-from definition_98103d3a9ae9431dbf767aa44c80eb96 import load_data
+from definition_d79e99cefa9045a5a2f3a4a056da23b1 import load_data
+import os
 
 def test_load_data_valid_csv(tmp_path):
-    d = {'col1': [1, 2], 'col2': [3, 4]}
-    df = pd.DataFrame(data=d)
-    p = tmp_path / "test.csv"
-    df.to_csv(p, index=False)
-    loaded_df = load_data(str(p))
-    pd.testing.assert_frame_equal(loaded_df, df)
+    d = tmp_path / "sub"
+    d.mkdir()
+    p = d / "test.csv"
+    p.write_text("col1,col2\n1,2\n3,4")
+
+    df = load_data(str(p))
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape == (2, 2)
+    assert list(df.columns) == ['col1', 'col2']
+
 
 def test_load_data_empty_csv(tmp_path):
-    p = tmp_path / "empty.csv"
-    with open(p, 'w') as f:
-        f.write('')
-    with pytest.raises(pd.errors.EmptyDataError):
-        load_data(str(p))
+    d = tmp_path / "sub"
+    d.mkdir()
+    p = d / "empty.csv"
+    p.write_text("")
+    
+    df = load_data(str(p))
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
 
-def test_load_data_nonexistent_file():
+
+def test_load_data_invalid_path():
     with pytest.raises(FileNotFoundError):
         load_data("nonexistent_file.csv")
 
-def test_load_data_invalid_path_type():
-    with pytest.raises(TypeError):
-        load_data(123)
 
-def test_load_data_corrupted_csv(tmp_path):
-    p = tmp_path / "corrupted.csv"
-    with open(p, 'w') as f:
-        f.write("col1,col2\n1,2\n3")
-    with pytest.raises(pd.errors.ParserError):
-        load_data(str(p))
+def test_load_data_different_delimiter(tmp_path):
+    d = tmp_path / "sub"
+    d.mkdir()
+    p = d / "test_pipe.csv"
+    p.write_text("col1|col2\n1|2\n3|4")
+
+    df = load_data(str(p))
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape == (2, 1) #incorrectly parsed
+
+def test_load_data_no_header(tmp_path):
+    d = tmp_path / "sub"
+    d.mkdir()
+    p = d / "no_header.csv"
+    p.write_text("1,2\n3,4")
+
+    df = load_data(str(p))
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape == (2,1) #incorrectly parsed
