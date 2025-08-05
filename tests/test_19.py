@@ -1,47 +1,46 @@
 import pytest
-from unittest.mock import MagicMock
-from definition_f47c292108f049038a586ab823ef7775 import save_preprocessing_pipeline
 import pickle
 import os
+from definition_d106ce50645947b08ebbe7b6c8568cce import load_model
 
-def test_save_pipeline_success(tmp_path):
-    """Test that the pipeline is saved successfully."""
-    pipeline_mock = MagicMock()
-    filepath = os.path.join(tmp_path, "pipeline.pkl")
-    save_preprocessing_pipeline(pipeline_mock, filepath)
-    assert os.path.exists(filepath)
 
-def test_save_pipeline_file_content(tmp_path):
-    """Test that the saved pipeline can be loaded and is the same."""
-    import sklearn.pipeline
-    from sklearn.preprocessing import StandardScaler
-    pipeline = sklearn.pipeline.Pipeline([('scaler', StandardScaler())])
+def create_dummy_model(file_path):
+    # Create a dummy model and save it as a pickle file
+    dummy_model = {"model": "dummy"}
+    with open(file_path, 'wb') as f:
+        pickle.dump(dummy_model, f)
 
-    filepath = os.path.join(tmp_path, "pipeline.pkl")
-    save_preprocessing_pipeline(pipeline, filepath)
 
-    with open(filepath, 'rb') as f:
-        loaded_pipeline = pickle.load(f)
+def test_load_model_valid_file():
+    file_path = "test_model.pkl"
+    create_dummy_model(file_path)
+    model = load_model(file_path)
+    assert isinstance(model, dict)
+    assert model["model"] == "dummy"
+    os.remove(file_path)  # Clean up the dummy file
 
-    assert isinstance(loaded_pipeline, sklearn.pipeline.Pipeline)
-    assert isinstance(loaded_pipeline.steps[0][1], StandardScaler)
 
-def test_save_pipeline_invalid_filepath(tmp_path):
-    """Test that the function handles invalid filepaths gracefully."""
-
-    pipeline_mock = MagicMock()
-    filepath = os.path.join(tmp_path, "nonexistent_dir", "pipeline.pkl")
+def test_load_model_file_not_found():
     with pytest.raises(FileNotFoundError):
-        save_preprocessing_pipeline(pipeline_mock, filepath)
+        load_model("nonexistent_model.pkl")
 
-def test_save_pipeline_empty_pipeline(tmp_path):
-    """Test that function handles case with empty pipeline."""
-    import sklearn.pipeline
-    pipeline = sklearn.pipeline.Pipeline([])
-    filepath = os.path.join(tmp_path, "pipeline.pkl")
-    save_preprocessing_pipeline(pipeline, filepath)
-    assert os.path.exists(filepath)
-    with open(filepath, 'rb') as f:
-        loaded_pipeline = pickle.load(f)
-    assert isinstance(loaded_pipeline, sklearn.pipeline.Pipeline)
-    assert len(loaded_pipeline.steps) == 0
+
+def test_load_model_invalid_file_corrupted():
+    file_path = "corrupted_model.pkl"
+    with open(file_path, 'w') as f:
+        f.write("This is not a pickle file")
+    with pytest.raises(Exception):  # or specifically pickle.UnpicklingError if appropriate
+        load_model(file_path)
+    os.remove(file_path)
+
+
+def test_load_model_empty_file():
+    file_path = "empty_model.pkl"
+    open(file_path, 'wb').close()  # creates an empty file
+    with pytest.raises(Exception): #or specifically pickle.UnpicklingError or EOFError
+        load_model(file_path)
+    os.remove(file_path)
+
+def test_load_model_none_filepath():
+    with pytest.raises(TypeError):
+        load_model(None)
