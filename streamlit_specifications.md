@@ -699,22 +699,5 @@ def map_pd_to_rating_grades(predicted_probabilities, num_grades):
 
 ### 4.15. Saving and Loading Models and Data:
 
-- Implement the `save_model`, `load_model`, and `save_data` functions for persisting model artifacts.
-- Relevant code:
-```python
-import pickle
-import pandas as pd
-def save_model(model, file_path):
-    """Saves a trained model to a pickle file."""
-    if not file_path:
-        raise ValueError("File path cannot be empty or None.")
-
-    if not isinstance(file_path, str):
-        raise ValueError("File path must be a string.")
-    
-    try:
-        with open(file_path, 'wb') as f:
-            pickle.dump(model, f)
-        print(f"Model saved successfully to: {file_path}")
-    except TypeError:
-        raise TypeError("
+- Implement the `save_model`, `load_model`, and `save_data` functions for persisting model artifacts which will download this data.
+- Compulsorily have markdown explanations for these concepts.
