@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 from ucimlrepo import fetch_ucirepo
 
-st.set_page_config(page_title="Credit Rating Model", layout="wide")
+st.set_page_config(page_title="QuLab 1.1: Rating models - Development", layout="wide")
 st.sidebar.image("https://www.quantuniversity.com/assets/img/logo5.jpg")
 st.sidebar.divider()
-st.title("Wholesale Credit Rating Model Development")
+st.title("QuLab 1.1: Rating models - Development")
 st.divider()
 
 st.markdown("""
