@@ -223,3 +223,4 @@ print(default_of_credit_card_clients.variables)
 | **Model inventory record**                                                                                             | YAML template `model_inventory_entry.yaml` with model\_id, tier, owner, validator, last\_validated, next\_due      | Governance registration requirement                  |
 
 Also, do not just write the code stubs, but also have the implementation of the code stubs.
+Do not inclue the code stubs in the markdowns
