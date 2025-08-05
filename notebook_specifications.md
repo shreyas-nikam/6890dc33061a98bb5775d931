@@ -15,7 +15,7 @@
 Upon completion of this notebook, users will be able to:
 *   Ingest and prepare credit risk data for modeling.
 *   Engineer relevant features from raw data.
-*   Develop and evaluate credit risk models, including logistic regression and tree-based models.
+*   Develop and evaluate credit risk models, including logistic regression, one gradient boosted tree and one raandom forest model.
 *   Map predicted default probabilities to a credit rating scale.
 *   Document the entire modeling process for reproducibility and auditability.
 *   Demonstrate an understanding of the key components of a credit rating model and their impact on risk assessment.
@@ -78,6 +78,10 @@ Where:
 
 Gradient-boosted trees are an ensemble learning method that combines multiple decision trees to create a strong predictive model.  The algorithm iteratively builds trees, with each tree correcting the errors of its predecessors.  This approach can capture complex non-linear relationships in the data.
 
+### 2.5 Random Forest Models
+
+Random Forest is an ensemble learning method that operates by constructing a multitude of decision trees during training. It addresses the problem of overfitting inherent in single decision trees by averaging or taking a majority vote of the predictions from each tree. This results in a more robust and generally more accurate model that can be used for both classification and regression tasks.
+
 ### 2.5. Gini Coefficient and AUC
 
 The Gini coefficient and Area Under the ROC Curve (AUC) are performance metrics used to evaluate the discriminatory power of a credit risk model.  They quantify the model's ability to distinguish between defaulters and non-defaulters.
@@ -126,6 +130,7 @@ Furthermore, predicted PDs must be calibrated against observed default frequenci
     *   Preprocessed dataset (pandas DataFrame).
     *   Trained logistic regression model (pickle file).
     *   Trained gradient-boosted trees model (pickle file).
+    *   Trained Random Forest model (pickle file).
     *   Preprocessing pipeline (pickle file).
     *   Rating grade cutoffs (CSV file).
     *   Data log (YAML file).
@@ -149,6 +154,7 @@ Furthermore, predicted PDs must be calibrated against observed default frequenci
     *   Function to split the dataset into training and validation sets (stratified split).
     *   Function to train a logistic regression model.
     *   Function to train a gradient-boosted trees model.
+    *   Function to train a random forest model.
     *   Function to calculate VIF values for multicollinearity assessment.
 *   **Model Evaluation:**
     *   Function to calculate AUC and Gini coefficient.
