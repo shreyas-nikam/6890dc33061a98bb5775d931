@@ -5,6 +5,8 @@ from ucimlrepo import fetch_ucirepo
 import plotly.express as px
 
 # Helper function for data quality checks
+
+
 def perform_data_quality_checks(df, enable_imputation=False, outlier_threshold=3):
     """Performs data quality checks for missing values and outliers.
     Args:
@@ -21,7 +23,8 @@ def perform_data_quality_checks(df, enable_imputation=False, outlier_threshold=3
     numeric_cols = df_cleaned.select_dtypes(include=np.number).columns
 
     if not numeric_cols.any():
-        st.warning("DataFrame must contain at least one numeric column for quality checks.")
+        st.warning(
+            "DataFrame must contain at least one numeric column for quality checks.")
         return df_cleaned
 
     # Handle missing values (mean imputation) if enabled
@@ -36,15 +39,20 @@ def perform_data_quality_checks(df, enable_imputation=False, outlier_threshold=3
     for col in numeric_cols:
         if df_cleaned[col].std() == 0:  # Skip constant columns
             continue
-        
-        upper_limit = df_cleaned[col].mean() + outlier_threshold * df_cleaned[col].std()
-        lower_limit = df_cleaned[col].mean() - outlier_threshold * df_cleaned[col].std()
-        
-        df_cleaned[col] = df_cleaned[col].apply(lambda x: min(x, upper_limit)) # Capping at upper limit
-        df_cleaned[col] = df_cleaned[col].apply(lambda x: max(x, lower_limit)) # Capping at lower limit
+
+        upper_limit = df_cleaned[col].mean(
+        ) + outlier_threshold * df_cleaned[col].std()
+        lower_limit = df_cleaned[col].mean(
+        ) - outlier_threshold * df_cleaned[col].std()
+
+        df_cleaned[col] = df_cleaned[col].apply(
+            lambda x: min(x, upper_limit))  # Capping at upper limit
+        df_cleaned[col] = df_cleaned[col].apply(
+            lambda x: max(x, lower_limit))  # Capping at lower limit
     st.success(f"Outliers capped at {outlier_threshold} standard deviations.")
 
     return df_cleaned
+
 
 def run_data_exploration():
     st.header("1. Data Exploration")
@@ -67,9 +75,46 @@ def run_data_exploration():
                 # Data (as pandas dataframes)
                 X = default_of_credit_card_clients.data.features
                 y = default_of_credit_card_clients.data.targets
+                y = y.rename(columns={0: 'default payment next month'})
+                variable_info = default_of_credit_card_clients.variables
+
+                column_mapping = {
+                    row['name']: row['description']
+                    for index, row in variable_info.iterrows()
+                    if row['name'] in X.columns and row['description'] is not None
+                }
+                X = X.rename(columns=column_mapping)
+
+                # Combine X and y for initial data processing
+                # Ensure y has a proper column name before concatenation
+                if isinstance(y, pd.DataFrame) and 'Y' in y.columns:
+                    # If y is already a DataFrame and has the column 'Y', use it directly
+                    pass
+                elif isinstance(y, pd.Series):
+                    # If y is a Series, convert to DataFrame and rename the column
+                    # Use the description for Y
+                    y = y.to_frame(name='default payment next month')
+                else:
+                    # Handle other cases or raise an error if y is not in expected format
+                    raise TypeError(
+                        "Target variable 'y' is not in a recognized pandas format (Series or DataFrame).")
+
+                # Use the correct target column name from variable_info for concatenation if available
+                target_col_info = variable_info[variable_info['role'] == 'Target']
+                if not target_col_info.empty:
+                    target_col_name_in_data = target_col_info.iloc[0]['name']
+                    target_col_description = target_col_info.iloc[0]['description']
+                    # Rename the target column in y to its description for consistency
+                    if isinstance(y, pd.DataFrame) and target_col_name_in_data in y.columns:
+                        y = y.rename(
+                            columns={target_col_name_in_data: target_col_description})
+                    elif isinstance(y, pd.DataFrame) and y.shape[1] == 1:
+                        # If y is a DataFrame with one column but not named as in metadata, assume it's the target and rename
+                        y.columns = [target_col_description]
 
                 # Combine X and y for initial data processing
                 st.session_state.df = pd.concat([X, y], axis=1)
+
                 st.success("Dataset loaded successfully!")
             except Exception as e:
                 st.error(f"Error loading dataset: {e}")
@@ -80,7 +125,8 @@ def run_data_exploration():
 
         st.subheader("Missing Values")
         missing_values = st.session_state.df.isnull().sum()
-        missing_values_df = pd.DataFrame({'Column': missing_values.index, 'Missing Count': missing_values.values})
+        missing_values_df = pd.DataFrame(
+            {'Column': missing_values.index, 'Missing Count': missing_values.values})
         missing_values_df = missing_values_df[missing_values_df['Missing Count'] > 0]
         if not missing_values_df.empty:
             st.dataframe(missing_values_df.set_index('Column'))
@@ -88,7 +134,8 @@ def run_data_exploration():
             st.info("No missing values found in the loaded dataset.")
 
         st.subheader("DataFrame Shape")
-        st.write(f"Rows: {st.session_state.df.shape[0]}, Columns: {st.session_state.df.shape[1]}")
+        st.write(
+            f"Rows: {st.session_state.df.shape[0]}, Columns: {st.session_state.df.shape[1]}")
 
         st.subheader("Summary Statistics")
         st.write(st.session_state.df.describe())
@@ -101,8 +148,10 @@ def run_data_exploration():
         This helps in reducing the impact of extreme values on model training.
         """)
 
-        enable_mean_imputation = st.checkbox("Enable Mean Imputation for Missing Values", value=False)
-        outlier_threshold = st.slider("Outlier Threshold (Standard Deviations)", min_value=1.0, max_value=5.0, value=3.0, step=0.1)
+        enable_mean_imputation = st.checkbox(
+            "Enable Mean Imputation for Missing Values", value=False)
+        outlier_threshold = st.slider(
+            "Outlier Threshold (Standard Deviations)", min_value=1.0, max_value=5.0, value=3.0, step=0.1)
 
         if st.button("Apply Data Quality Checks"):
             with st.spinner("Applying data quality checks..."):
@@ -113,15 +162,19 @@ def run_data_exploration():
                         outlier_threshold=outlier_threshold
                     )
                     st.success("Data quality checks applied successfully!")
-                    st.subheader("Processed Data Preview (after quality checks)")
+                    st.subheader(
+                        "Processed Data Preview (after quality checks)")
                     st.write(st.session_state.df_processed.head())
 
                     st.subheader("Missing Values After Processing")
                     missing_values_after = st.session_state.df_processed.isnull().sum()
-                    missing_values_df_after = pd.DataFrame({'Column': missing_values_after.index, 'Missing Count': missing_values_after.values})
-                    missing_values_df_after = missing_values_df_after[missing_values_df_after['Missing Count'] > 0]
+                    missing_values_df_after = pd.DataFrame(
+                        {'Column': missing_values_after.index, 'Missing Count': missing_values_after.values})
+                    missing_values_df_after = missing_values_df_after[
+                        missing_values_df_after['Missing Count'] > 0]
                     if not missing_values_df_after.empty:
-                        st.dataframe(missing_values_df_after.set_index('Column'))
+                        st.dataframe(
+                            missing_values_df_after.set_index('Column'))
                     else:
                         st.info("No missing values after processing.")
 

@@ -131,7 +131,7 @@ def create_management_experience_score(df, edu_weight, marriage_weight, age_weig
 
     df_copy = df.copy()
     # Ensure PAY_X columns exist. If not, create dummy ones or handle gracefully.
-    pay_cols = [f'PAY_{i}' for i in range(7)] # PAY_0 to PAY_6
+    pay_cols = [f'PAY_{i}' for i in [0,2,3,4,5,6]] # PAY_0 to PAY_6
     for col in pay_cols:
         if col not in df_copy.columns:
             df_copy[col] = 0 # Default to 0 if missing for this synthetic score
@@ -145,7 +145,6 @@ def create_management_experience_score(df, edu_weight, marriage_weight, age_weig
         elif not pd.api.types.is_numeric_dtype(df_copy[col]):
             st.warning(f"Warning: Column '{col}' is not numeric. Attempting to convert to numeric for management experience score.")
             df_copy[col] = pd.to_numeric(df_copy[col], errors='coerce').fillna(0)
-
 
     df_copy['management_experience_score'] = (
         df_copy['EDUCATION'] * edu_weight + # Assuming EDUCATION is numeric and higher is better
@@ -342,7 +341,7 @@ def run_feature_engineering():
     # Ensure relevant columns for management score are present or warn user
     required_mgmt_cols = ['EDUCATION', 'MARRIAGE', 'AGE'] + [f'PAY_{i}' for i in range(7)]
     if not all(col in st.session_state.df_fe.columns for col in required_mgmt_cols):
-        st.warning(f"Some required columns for 'Management Experience Score' (e.g., {\', \'.join([c for c in required_mgmt_cols if c not in st.session_state.df_fe.columns])}) are missing. The score will be calculated with dummy zeros for missing columns.")
+        st.warning(f"Some required columns for 'Management Experience Score' (e.g., {', '.join([c for c in required_mgmt_cols if c not in st.session_state.df_fe.columns])}) are missing. The score will be calculated with dummy zeros for missing columns.")
 
     edu_w = st.slider("Weight for EDUCATION", min_value=0.0, max_value=1.0, value=0.2, step=0.05, key="edu_w")
     marriage_w = st.slider("Weight for MARRIAGE", min_value=0.0, max_value=1.0, value=0.1, step=0.05, key="marriage_w")
@@ -411,7 +410,7 @@ def run_feature_engineering():
     A higher AUC or Gini coefficient indicates a stronger relationship with the target.
     """)
     # Assuming the target column is 'default.payment.next.month' as per UCI dataset info
-    target_col_name = 'default payment next month'
+    target_col_name = 'y'
     
     if target_col_name in st.session_state.df_fe.columns:
         # Exclude target and any non-numeric columns from feature list

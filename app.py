@@ -1,4 +1,3 @@
-"""
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -64,7 +63,6 @@ elif page == "Feature Engineering":
 elif page == "Model Training":
     from application_pages.model_training import run_model_training
     run_model_training()
-"""
 
 # License
 st.caption('''

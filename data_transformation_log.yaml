@@ -1,0 +1,9 @@
+- steps_applied:
+  - Imputation:
+      strategy: median
+  - Winsorization:
+      columns:
+      - MARRIAGE
+      lower_quantile: 0.09
+      upper_quantile: 0.52
+  timestamp: '2025-08-05 12:10:41'
