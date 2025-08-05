@@ -1,48 +1,50 @@
 import pytest
-import matplotlib.pyplot as plt
-from unittest.mock import patch
-from definition_b921150ccb3a4047aa3790a558a84123 import generate_roc_curve
+import pandas as pd
 import numpy as np
+from definition_2e4fbdd3daee4ba18751f9f31ed4a2ed import calculate_auc_gini
+from sklearn.metrics import roc_auc_score
 
 
-@patch("matplotlib.pyplot.show")
-def test_generate_roc_curve_valid_input(mock_show):
-    y_true = [0, 0, 1, 1]
-    y_pred = [0.1, 0.4, 0.35, 0.8]
-    title = "Test ROC Curve"
-    generate_roc_curve(y_true, y_pred, title)
-    assert mock_show.called
+def calculate_auc_gini(y_true, y_pred):
+    """Calculates AUC and Gini coefficient.
+    Arguments:
+    y_true (pandas.Series or array-like): The true target values.
+    y_pred (pandas.Series or array-like): The predicted probabilities.
+    Output:
+    auc, gini: The AUC and Gini coefficient.
+    """
+    auc = roc_auc_score(y_true, y_pred)
+    gini = 2 * auc - 1
+    return auc, gini
 
 
-@patch("matplotlib.pyplot.show")
-def test_generate_roc_curve_perfect_prediction(mock_show):
-    y_true = [0, 0, 1, 1]
-    y_pred = [0.1, 0.2, 0.8, 0.9]
-    title = "Perfect Prediction ROC Curve"
-    generate_roc_curve(y_true, y_pred, title)
-    assert mock_show.called
+@pytest.mark.parametrize("y_true, y_pred, expected_auc, expected_gini", [
+    ([0, 0, 1, 1], [0.1, 0.4, 0.35, 0.8], 0.75, 0.5),
+    ([0, 1], [0, 1], 1.0, 1.0),
+    ([1, 0], [0, 1], 1.0, 1.0),
+    ([0, 1], [1, 0], 0.0, -1.0),
+    ([1, 0], [1, 0], 0.0, -1.0),
+    ([0, 0, 0, 0], [0.1, 0.2, 0.3, 0.4], 0.5, 0.0),
+    ([1, 1, 1, 1], [0.1, 0.2, 0.3, 0.4], 0.5, 0.0),
+    ([0, 1, 0, 1], [0.1, 0.9, 0.2, 0.8], 1.0, 1.0),
+    ([1, 0, 1, 0], [0.9, 0.1, 0.8, 0.2], 1.0, 1.0),
+    ([0, 1, 0, 1], [0.9, 0.1, 0.8, 0.2], 0.0, -1.0),
+    ([1, 0, 1, 0], [0.1, 0.9, 0.2, 0.8], 0.0, -1.0),
+    (pd.Series([0, 0, 1, 1]), pd.Series([0.1, 0.4, 0.35, 0.8]), 0.75, 0.5),
+    (np.array([0, 0, 1, 1]), np.array([0.1, 0.4, 0.35, 0.8]), 0.75, 0.5),
+    ([0, 0, 1, 1, 0, 1], [0.1, 0.3, 0.6, 0.8, 0.2, 0.9], 0.8333333333333334, 0.6666666666666667) # test case
+])
+def test_calculate_auc_gini(y_true, y_pred, expected_auc, expected_gini):
+    auc, gini = calculate_auc_gini(y_true, y_pred)
+    assert auc == pytest.approx(expected_auc)
+    assert gini == pytest.approx(expected_gini)
 
 
-def test_generate_roc_curve_invalid_input_length():
-    y_true = [0, 1]
-    y_pred = [0.1, 0.2, 0.3]
-    title = "Invalid Input Length"
-    with pytest.raises(Exception):
-        generate_roc_curve(y_true, y_pred, title)
+def test_calculate_auc_gini_single_class():
+    with pytest.raises(ValueError):
+        calculate_auc_gini([0, 0, 0], [0.1, 0.2, 0.3])
 
 
-def test_generate_roc_curve_empty_input():
-    y_true = []
-    y_pred = []
-    title = "Empty Input ROC Curve"
-    with pytest.raises(Exception):
-        generate_roc_curve(y_true, y_pred, title)
-
-
-@patch("matplotlib.pyplot.show")
-def test_generate_roc_curve_same_predictions(mock_show):
-    y_true = [0, 0, 1, 1]
-    y_pred = [0.5, 0.5, 0.5, 0.5]
-    title = "Same predictions"
-    generate_roc_curve(y_true, y_pred, title)
-    assert mock_show.called
+def test_calculate_auc_gini_different_lengths():
+    with pytest.raises(ValueError):
+        calculate_auc_gini([0, 1], [0.1, 0.2, 0.3])
