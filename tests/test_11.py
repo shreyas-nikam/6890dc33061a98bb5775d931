@@ -1,56 +1,40 @@
 import pytest
 import pandas as pd
-import numpy as np
-from definition_662a5e994c0d464daffeee643ea123f7 import calculate_vif
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-
-
-def calculate_vif_mine(X):
-    vif_data = pd.DataFrame()
-    vif_data["feature"] = X.columns
-    vif_data["VIF"] = [variance_inflation_factor(X.values, i) for i in range(len(X.columns))]
-    return vif_data.set_index("feature")["VIF"]
+from sklearn.ensemble import RandomForestClassifier
+from unittest.mock import patch
+from definition_271611781a3e45d4a020613fd3c06aaf import train_random_forest
 
 @pytest.fixture
-def sample_dataframe():
-    data = {'col1': [1, 2, 3, 4, 5],
-            'col2': [2, 4, 5, 4, 5],
-            'col3': [3, 5, 7, 6, 2]}
-    return pd.DataFrame(data)
+def sample_data():
+    X_train = pd.DataFrame({'feature1': [1, 2, 3, 4, 5], 'feature2': [6, 7, 8, 9, 10]})
+    y_train = pd.Series([0, 1, 0, 1, 0])
+    return X_train, y_train
 
-def test_calculate_vif_valid_input(sample_dataframe):
-    try:
-        result = calculate_vif(sample_dataframe)
-        expected = calculate_vif_mine(sample_dataframe)
-        assert isinstance(result, pd.Series)
-        assert result.index.tolist() == sample_dataframe.columns.tolist()
-        np.testing.assert_allclose(result.values, expected.values)
-    except Exception as e:
-        pytest.fail(f"Unexpected exception: {e}")
+def test_train_random_forest_returns_model(sample_data):
+    X_train, y_train = sample_data
+    model = train_random_forest(X_train, y_train, n_estimators=10, max_depth=5, random_state=42)
+    assert isinstance(model, RandomForestClassifier)
 
+def test_train_random_forest_correct_n_estimators(sample_data):
+    X_train, y_train = sample_data
+    n_estimators = 20
+    model = train_random_forest(X_train, y_train, n_estimators=n_estimators, max_depth=5, random_state=42)
+    assert model.n_estimators == n_estimators
 
-def test_calculate_vif_perfect_correlation():
-    data = {'col1': [1, 2, 3, 4, 5],
-            'col2': [2, 4, 6, 8, 10]}
-    df = pd.DataFrame(data)
-    with pytest.raises(ValueError):
-        calculate_vif(df)
+def test_train_random_forest_predicts(sample_data):
+    X_train, y_train = sample_data
+    model = train_random_forest(X_train, y_train, n_estimators=10, max_depth=5, random_state=42)
+    predictions = model.predict(X_train)
+    assert len(predictions) == len(X_train)
 
-def test_calculate_vif_constant_column():
-    data = {'col1': [1, 1, 1, 1, 1],
-            'col2': [2, 4, 6, 8, 10]}
-    df = pd.DataFrame(data)
-    with pytest.raises(ValueError):
-        calculate_vif(df)
+def test_train_random_forest_empty_data():
+    X_train = pd.DataFrame()
+    y_train = pd.Series([])
+    with pytest.raises(ValueError) as excinfo:
+        train_random_forest(X_train, y_train, n_estimators=10, max_depth=5, random_state=42)
+    assert "DataFrame is empty" in str(excinfo.value)
 
-def test_calculate_vif_single_column():
-    data = {'col1': [1, 2, 3, 4, 5]}
-    df = pd.DataFrame(data)
-    result = calculate_vif(df)
-    assert isinstance(result, pd.Series)
-    assert result['col1'] == 1.0
-
-def test_calculate_vif_empty_dataframe():
-    df = pd.DataFrame()
-    with pytest.raises(ValueError):
-        calculate_vif(df)
+def test_train_random_forest_invalid_input_type():
+     with pytest.raises(TypeError) as excinfo:
+        train_random_forest("invalid", "invalid", 10, 5, 42)
+     assert "Input X_train must be a pandas DataFrame" in str(excinfo.value)
