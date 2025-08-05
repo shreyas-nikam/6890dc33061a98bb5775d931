@@ -194,3 +194,5 @@ Furthermore, predicted PDs must be calibrated against observed default frequenci
 | **Quarterly portfolio snapshots**                                                                                      | CSV per quarter: `snap_YYYYQ.csv` containing *obligor\_id, snapshot\_date, current\_grade, realised\_default\_flag* | Compute PSI, grade migrations, realised default vs PD|
 | **Override log**                                                                                                       | `overrides.csv`: *obligor\_id, override\_date, model\_grade, final\_grade, reason\_code, approver\_id*             | Monitor expert overrides & build override matrix     |
 | **Model inventory record**                                                                                             | YAML template `model_inventory_entry.yaml` with model\_id, tier, owner, validator, last\_validated, next\_due      | Governance registration requirement                  |
+
+Also, do not just write the code stubs, but also have the implementation of the code stubs.
