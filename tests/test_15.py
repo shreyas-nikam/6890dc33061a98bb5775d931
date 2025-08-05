@@ -1,54 +1,45 @@
 import pytest
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from definition_b1464fb0c2154f399f7a8c1529919eb0 import generate_hosmer_lemeshow_plot
-
+from definition_7874e9b86bdd497eaa7436897d573ab4 import generate_calibration_plot
 
 def create_dummy_data(size):
     y_true = np.random.randint(0, 2, size=size)
     y_prob = np.random.rand(size)
-    return pd.Series(y_true), pd.Series(y_prob)
+    return y_true, y_prob
 
+@pytest.fixture
+def dummy_data():
+    return create_dummy_data(100)
 
-def test_generate_hosmer_lemeshow_plot_valid_input():
-    y_true, y_prob = create_dummy_data(100)
-    n_bins = 10
-    title = "Hosmer-Lemeshow Plot"
-    fig = generate_hosmer_lemeshow_plot(y_true, y_prob, n_bins, title)
-    assert isinstance(fig, plt.Figure)
-    plt.close(fig)
+def test_generate_calibration_plot_valid_input(dummy_data):
+    y_true, y_prob = dummy_data
+    try:
+        generate_calibration_plot(y_true, y_prob, n_bins=10, title="Calibration Plot")
+    except Exception as e:
+        pytest.fail(f"Unexpected exception: {e}")
 
+def test_generate_calibration_plot_empty_input():
+    y_true = np.array([])
+    y_prob = np.array([])
+    try:
+        generate_calibration_plot(y_true, y_prob, n_bins=5, title="Empty Calibration Plot")
+    except Exception as e:
+        pytest.fail(f"Unexpected exception: {e}")
 
-def test_generate_hosmer_lemeshow_plot_empty_input():
-    y_true = pd.Series([])
-    y_prob = pd.Series([])
-    n_bins = 10
-    title = "Hosmer-Lemeshow Plot"
-    fig = generate_hosmer_lemeshow_plot(y_true, y_prob, n_bins, title)
-    assert isinstance(fig, plt.Figure)
-    plt.close(fig)
-
-
-def test_generate_hosmer_lemeshow_plot_mismatched_lengths():
-    y_true, _ = create_dummy_data(100)
-    y_prob, = create_dummy_data(50)  # Different length
-    n_bins = 10
-    title = "Hosmer-Lemeshow Plot"
+def test_generate_calibration_plot_invalid_n_bins(dummy_data):
+    y_true, y_prob = dummy_data
     with pytest.raises(ValueError):
-        generate_hosmer_lemeshow_plot(y_true, y_prob, n_bins, title)
+        generate_calibration_plot(y_true, y_prob, n_bins=0, title="Invalid n_bins")
 
-def test_generate_hosmer_lemeshow_plot_invalid_bins():
-    y_true, y_prob = create_dummy_data(100)
-    n_bins = 0 #invalid number of bins
-    title = "Hosmer-Lemeshow Plot"
-    with pytest.raises(ValueError):
-        generate_hosmer_lemeshow_plot(y_true, y_prob, n_bins, title)
+def test_generate_calibration_plot_prob_not_in_range(dummy_data):
+     y_true, _ = dummy_data
+     y_prob = np.random.uniform(1.1, 2, size = 100)
+     with pytest.raises(ValueError):
+         generate_calibration_plot(y_true, y_prob, n_bins = 10, title = "Invalid prob range")
 
-def test_generate_hosmer_lemeshow_plot_y_prob_out_of_range():
-    y_true = pd.Series([0, 1, 0, 1])
-    y_prob = pd.Series([-0.1, 1.2, 0.5, 0.8])  # Probabilities outside [0, 1]
-    n_bins = 4
-    title = "Hosmer-Lemeshow Plot"
+def test_generate_calibration_plot_different_lengths():
+    y_true = np.array([0, 1, 0])
+    y_prob = np.array([0.2, 0.8])
     with pytest.raises(ValueError):
-        generate_hosmer_lemeshow_plot(y_true, y_prob, n_bins, title)
+        generate_calibration_plot(y_true, y_prob, n_bins=5, title="Different Lengths")
