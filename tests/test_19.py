@@ -1,55 +1,47 @@
 import pytest
-from definition_9f44fb35d8664155a2a4dd09ec4ef31f import generate_model_documentation_report
+from unittest.mock import MagicMock
+from definition_f47c292108f049038a586ab823ef7775 import save_preprocessing_pipeline
+import pickle
+import os
 
-def test_generate_model_documentation_report_success():
-    model_description = "Test model description"
-    data_description = "Test data description"
-    performance_metrics = {"accuracy": 0.9, "precision": 0.8}
-    # Assuming the function doesn't raise an exception for valid inputs.  If it *returns* something, assert that instead.
-    try:
-        generate_model_documentation_report(model_description, data_description, performance_metrics)
-    except Exception as e:
-        assert False, f"Unexpected exception: {e}"
+def test_save_pipeline_success(tmp_path):
+    """Test that the pipeline is saved successfully."""
+    pipeline_mock = MagicMock()
+    filepath = os.path.join(tmp_path, "pipeline.pkl")
+    save_preprocessing_pipeline(pipeline_mock, filepath)
+    assert os.path.exists(filepath)
 
-def test_generate_model_documentation_report_empty_descriptions():
-    model_description = ""
-    data_description = ""
-    performance_metrics = {}
-    # Assuming the function doesn't raise an exception for valid inputs.  If it *returns* something, assert that instead.
-    try:
-        generate_model_documentation_report(model_description, data_description, performance_metrics)
-    except Exception as e:
-        assert False, f"Unexpected exception: {e}"
+def test_save_pipeline_file_content(tmp_path):
+    """Test that the saved pipeline can be loaded and is the same."""
+    import sklearn.pipeline
+    from sklearn.preprocessing import StandardScaler
+    pipeline = sklearn.pipeline.Pipeline([('scaler', StandardScaler())])
 
-def test_generate_model_documentation_report_missing_performance_metrics():
-    model_description = "Test model description"
-    data_description = "Test data description"
-    performance_metrics = None
-    # Assuming the function handles None gracefully.  Adjust assertion if it should raise an error.
-    try:
-        generate_model_documentation_report(model_description, data_description, performance_metrics)
-    except TypeError:
-        pass  #Expect a TypeError if performance_metrics must be a dictionary
-    except Exception as e:
-        assert False, f"Unexpected exception: {e}"
+    filepath = os.path.join(tmp_path, "pipeline.pkl")
+    save_preprocessing_pipeline(pipeline, filepath)
 
-def test_generate_model_documentation_report_invalid_performance_metrics_type():
-    model_description = "Test model description"
-    data_description = "Test data description"
-    performance_metrics = "Invalid" # Should be a dict, not a string.
-    try:
-        generate_model_documentation_report(model_description, data_description, performance_metrics)
-    except TypeError:
-        pass #Expect a TypeError if performance_metrics must be a dictionary
-    except Exception as e:
-        assert False, f"Unexpected exception: {e}"
+    with open(filepath, 'rb') as f:
+        loaded_pipeline = pickle.load(f)
 
-def test_generate_model_documentation_report_long_descriptions():
-    model_description = "A" * 2000  # Very long description.
-    data_description = "B" * 2000
-    performance_metrics = {"accuracy": 0.99999999, "precision": 0.9999999}
-    try:
-        generate_model_documentation_report(model_description, data_description, performance_metrics)
-    except Exception as e:
-        assert False, f"Unexpected exception: {e}"
+    assert isinstance(loaded_pipeline, sklearn.pipeline.Pipeline)
+    assert isinstance(loaded_pipeline.steps[0][1], StandardScaler)
 
+def test_save_pipeline_invalid_filepath(tmp_path):
+    """Test that the function handles invalid filepaths gracefully."""
+
+    pipeline_mock = MagicMock()
+    filepath = os.path.join(tmp_path, "nonexistent_dir", "pipeline.pkl")
+    with pytest.raises(FileNotFoundError):
+        save_preprocessing_pipeline(pipeline_mock, filepath)
+
+def test_save_pipeline_empty_pipeline(tmp_path):
+    """Test that function handles case with empty pipeline."""
+    import sklearn.pipeline
+    pipeline = sklearn.pipeline.Pipeline([])
+    filepath = os.path.join(tmp_path, "pipeline.pkl")
+    save_preprocessing_pipeline(pipeline, filepath)
+    assert os.path.exists(filepath)
+    with open(filepath, 'rb') as f:
+        loaded_pipeline = pickle.load(f)
+    assert isinstance(loaded_pipeline, sklearn.pipeline.Pipeline)
+    assert len(loaded_pipeline.steps) == 0
