@@ -1,40 +1,54 @@
 import pytest
+import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
-from definition_73b278e614a9426a92d3e1b3444b6267 import generate_hosmer_lemeshow_plot
+from unittest.mock import patch
+from io import StringIO
+from definition_aa3867525f324b08a443bfccae29a5c4 import generate_roc_curve
+from sklearn.metrics import roc_curve, auc
 
 
-def test_generate_hosmer_lemeshow_plot_empty_input():
+def _generate_dummy_data():
+    y_true = pd.Series([0, 0, 1, 1])
+    y_pred = pd.Series([0.1, 0.4, 0.35, 0.8])
+    return y_true, y_pred
+
+def test_generate_roc_curve_typical():
+    y_true, y_pred = _generate_dummy_data()
+    title = "ROC Curve Test"
+    fig = generate_roc_curve(y_true, y_pred, title)
+    assert isinstance(fig, plt.Figure)
+
+
+def test_generate_roc_curve_empty_data():
+    y_true = pd.Series([])
+    y_pred = pd.Series([])
+    title = "ROC Curve Empty Data"
+    fig = generate_roc_curve(y_true, y_pred, title)
+    assert isinstance(fig, plt.Figure)
+
+
+
+def test_generate_roc_curve_invalid_input_type_y_true():
+    y_true = [0, 1, 0, 1]
+    y_pred = pd.Series([0.1, 0.4, 0.35, 0.8])
+    title = "ROC Curve Invalid Input Type"
+    with pytest.raises(TypeError):
+        generate_roc_curve(y_true, y_pred, title)
+
+
+def test_generate_roc_curve_invalid_input_type_y_pred():
+    y_true = pd.Series([0, 0, 1, 1])
+    y_pred = [0.1, 0.4, 0.35, 0.8]
+    title = "ROC Curve Invalid Input Type"
+    with pytest.raises(TypeError):
+        generate_roc_curve(y_true, y_pred, title)
+
+
+
+def test_generate_roc_curve_mismatched_lengths():
+    y_true = pd.Series([0, 1])
+    y_pred = pd.Series([0.1, 0.4, 0.8])
+    title = "ROC Curve Mismatched Lengths"
     with pytest.raises(ValueError):
-        generate_hosmer_lemeshow_plot([], [], 10, "Test Plot")
+        generate_roc_curve(y_true, y_pred, title)
 
-def test_generate_hosmer_lemeshow_plot_mismatched_lengths():
-    with pytest.raises(ValueError):
-         generate_hosmer_lemeshow_plot([0, 1], [0.1], 10, "Test Plot")
-
-def test_generate_hosmer_lemeshow_plot_invalid_n_bins():
-    with pytest.raises(ValueError):
-        generate_hosmer_lemeshow_plot([0, 1, 0, 1], [0.2, 0.8, 0.3, 0.7], 0, "Test Plot")
-        
-def test_generate_hosmer_lemeshow_plot_valid_input(monkeypatch):
-    # Mock plt.show() to avoid displaying the plot during testing
-    monkeypatch.setattr(plt, 'show', lambda: None)
-    
-    y_true = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
-    y_prob = np.array([0.1, 0.9, 0.2, 0.8, 0.3, 0.7, 0.4, 0.6, 0.5, 0.5])
-    n_bins = 5
-    title = "Calibration Plot"
-    
-    # Check that the function runs without errors
-    generate_hosmer_lemeshow_plot(y_true, y_prob, n_bins, title)
-
-def test_generate_hosmer_lemeshow_plot_all_same_probability(monkeypatch):
-    monkeypatch.setattr(plt, 'show', lambda: None)
-    
-    y_true = np.array([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
-    y_prob = np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5])
-    n_bins = 5
-    title = "Calibration Plot"
-    
-    # Check that the function runs without errors
-    generate_hosmer_lemeshow_plot(y_true, y_prob, n_bins, title)
