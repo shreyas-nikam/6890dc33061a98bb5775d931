@@ -1,0 +1,314 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.metrics import roc_auc_score, roc_curve, auc
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+import joblib # For saving/loading models
+import io # For download buttons
+
+# Helper functions (re-defined for completeness as per prompt)
+
+def split_data(X, y, test_size, random_state):
+    """Splits data into training and validation sets.
+    Args:
+        X: Features DataFrame.
+        y: Target Series.
+        test_size: Proportion of the dataset to include in the test split.
+        random_state: Random seed for reproducibility.
+    Returns:
+        X_train, X_val, y_train, y_val
+    """
+    X_train, X_val, y_train, y_val = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y
+    )
+    return X_train, X_val, y_train, y_val
+
+def train_logistic_regression(X_train, y_train, C, random_state):
+    """Trains a logistic regression model.
+    Args:
+        X_train: Training features.
+        y_train: Training target variable.
+        C: Regularization parameter (inverse of regularization strength).
+        random_state: Random seed.
+    Returns:
+        Trained logistic regression model.
+    """
+    model = LogisticRegression(C=C, random_state=random_state, solver='liblinear', max_iter=1000) # Added solver and max_iter for robustness
+    if not X_train.empty and not y_train.empty and len(X_train) == len(y_train):
+        model.fit(X_train, y_train)
+    else:
+        st.warning("Training data for Logistic Regression is empty or mismatched lengths.")
+    return model
+
+def train_gradient_boosted_trees(X_train, y_train, random_state):
+    """Trains a gradient-boosted trees model.
+    Args:
+        X_train: Training features.
+        y_train: Training target variable.
+        random_state: Random seed.
+    Returns:
+        Trained gradient-boosted trees model.
+    """
+    model = GradientBoostingClassifier(random_state=random_state)
+    if not X_train.empty and not y_train.empty and len(X_train) == len(y_train):
+        model.fit(X_train, y_train)
+    else:
+        st.warning("Training data for Gradient Boosted Trees is empty or mismatched lengths.")
+    return model
+
+def train_random_forest(X_train, y_train, random_state):
+    """Trains a random forest model.
+    Args:
+        X_train: Training features.
+        y_train: Training target variable.
+        random_state: Random seed.
+    Returns:
+        Trained random forest model.
+    """
+    if X_train.empty or y_train.empty or len(X_train) != len(y_train):
+        st.warning("Training data for Random Forest is empty or mismatched lengths. Returning untrainted model.")
+        return RandomForestClassifier(random_state=random_state) # Return un-fitted model if data is bad
+
+    # Ensure all features are numeric. The previous steps should have handled this, but a check is good.
+    if not all(pd.api.types.is_numeric_dtype(X_train[col]) for col in X_train.columns):
+        st.error("All features must be numeric for Random Forest training.")
+        # Attempt to select only numeric columns if non-numeric are present
+        X_train = X_train.select_dtypes(include=np.number)
+        if X_train.empty:
+            st.error("No numeric columns left for training Random Forest.")
+            return RandomForestClassifier(random_state=random_state)
+
+    model = RandomForestClassifier(random_state=random_state)
+    model.fit(X_train, y_train)
+    return model
+
+def calculate_vif(X):
+    """Calculates VIF values for multicollinearity assessment.
+    Args:
+        X: pandas DataFrame of features.
+    Returns:
+        pandas Series of VIF values.
+    """
+    if X.empty:
+        return pd.Series(dtype=float)
+    if not all(np.issubdtype(X[col].dtype, np.number) for col in X.columns):
+        # Filter for numeric columns if non-numeric are present
+        X_numeric = X.select_dtypes(include=np.number)
+        if X_numeric.empty:
+            st.warning("DataFrame must contain at least one numeric column for VIF calculation. Returning empty Series.")
+            return pd.Series(dtype=float)
+        X = X_numeric
+
+    # Drop columns with zero variance, as VIF is undefined for them
+    X = X.loc[:, X.var() != 0]
+    if X.empty:
+        st.warning("All numeric columns have zero variance. Cannot calculate VIF. Returning empty Series.")
+        return pd.Series(dtype=float)
+
+    # Add a constant term for the intercept in statsmodels VIF calculation
+    X = X.copy()
+    X['intercept'] = 1
+
+    vif_data = pd.DataFrame()
+    vif_data["feature"] = X.columns
+    vif_data["VIF"] = [variance_inflation_factor(X.values, i)
+                            for i in range(X.shape[1])]
+    vif_data = vif_data.set_index("feature")["VIF"]
+    
+    # Drop the intercept's VIF as it's not a true feature VIF
+    if 'intercept' in vif_data.index:
+        vif_data = vif_data.drop('intercept')
+
+    return vif_data.sort_values(ascending=False)
+
+def calculate_auc_gini(y_true, y_pred_proba):
+    """Calculates AUC and Gini coefficient.
+    Args:
+        y_true (array-like): True binary labels.
+        y_pred_proba (array-like): Predicted probabilities of the positive class.
+    Returns:
+        tuple: (AUC score, Gini coefficient).
+    """
+    if len(np.unique(y_true)) < 2: # Check if there are at least two unique classes
+        st.warning("Warning: y_true must contain at least two classes to calculate AUC/Gini. Returning NaN.")
+        return np.nan, np.nan
+    
+    auc_score = roc_auc_score(y_true, y_pred_proba)
+    gini = 2 * auc_score - 1
+    return auc_score, gini
+
+def generate_roc_curve(y_true, y_pred_proba, title):
+    """Generates ROC curves using Plotly.
+    Args:
+        y_true (array-like): True target values.
+        y_pred_proba (array-like): Predicted probabilities of the positive class.
+        title (str): Title of the plot.
+    Returns:
+        plotly.graph_objects.Figure: ROC curve plot.
+    """
+    if len(y_true) == 0 or len(y_pred_proba) == 0:
+        st.warning("Input arrays for ROC curve cannot be empty.")
+        return go.Figure()
+
+    if len(y_true) != len(y_pred_proba):
+        st.warning("Input arrays for ROC curve must have the same length.")
+        return go.Figure()
+
+    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+    roc_auc = auc(fpr, tpr)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines',
+                             name=f'ROC curve (area = {roc_auc:.2f})', line=dict(color='darkorange', width=2)))
+    fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines',
+                             name='Random Classifier', line=dict(color='navy', width=2, dash='dash')))
+    fig.update_layout(
+        title=title,
+        xaxis_title='False Positive Rate (FPR)',
+        yaxis_title='True Positive Rate (TPR)',
+        xaxis=dict(range=[0, 1]),
+        yaxis=dict(range=[0, 1]),
+        template='plotly_white',
+        legend=dict(x=0.7, y=0.1)
+    )
+    return fig
+
+def generate_calibration_plot(y_true, y_prob, n_bins, title):
+    """Generates Hosmer-Lemeshow calibration plots using Plotly.
+    Args:
+        y_true (array-like): True binary labels.
+        y_prob (array-like): Predicted probabilities of the positive class.
+        n_bins (int): Number of bins for calibration.
+        title (str): Title of the plot.
+    Returns:
+        plotly.graph_objects.Figure: Calibration plot.
+    """
+    if not isinstance(y_true, np.ndarray):
+        y_true = np.array(y_true)
+    if not isinstance(y_prob, np.ndarray):
+        y_prob = np.array(y_prob)
+
+    if y_true.size == 0 or y_prob.size == 0:
+        st.warning("No data to plot for calibration. Skipping.")
+        return go.Figure()
+
+    if y_true.size != y_prob.size:
+        st.warning("y_true and y_prob must have the same length for calibration plot.")
+        return go.Figure()
+
+    if n_bins <= 0:
+        st.warning("n_bins must be a positive integer for calibration plot.")
+        return go.Figure()
+
+    if np.any(y_prob < 0) or np.any(y_prob > 1):
+        st.warning("y_prob contains values outside [0, 1]. Clamping to [0, 1].")
+        y_prob = np.clip(y_prob, 0, 1)
+
+    # Create bins for probabilities
+    bins = pd.cut(y_prob, bins=n_bins, labels=False, include_lowest=True)
+
+    bin_df = pd.DataFrame({'y_true': y_true, 'y_prob': y_prob, 'bin': bins})
+    calibration_data = bin_df.groupby('bin').agg(mean_prob=('y_prob', 'mean'), 
+                                                 observed_proportion=('y_true', 'mean')).reset_index()
+    
+    # Drop rows where mean_prob or observed_proportion might be NaN (e.g., empty bins)
+    calibration_data.dropna(inplace=True)
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=calibration_data['mean_prob'], y=calibration_data['observed_proportion'],
+                             mode='lines+markers', name='Calibration Curve', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines',
+                             name='Perfectly Calibrated', line=dict(color='gray', dash='dash')))
+    fig.update_layout(
+        title=title,
+        xaxis_title='Mean Predicted Probability (in bin)',
+        yaxis_title='Observed Proportion of Positives (in bin)',
+        xaxis=dict(range=[0, 1]),
+        yaxis=dict(range=[0, 1]),
+        template='plotly_white',
+        legend=dict(x=0.05, y=0.95)
+    )
+    return fig
+
+def calibrate_pds(predicted_probabilities, actual_default_rates):
+    """Calibrates PDs to observed default rates.
+    Note: This function is a placeholder. In a real-world scenario, more sophisticated
+    calibration techniques (e.g., Platt scaling, Isotonic Regression, or a simple
+    scaling factor derived from observed default rates) would be applied here.
+    For demonstration, we assume 'actual_default_rates' represent the desired calibrated output.
+    Args:
+        predicted_probabilities (np.ndarray): Predicted probabilities from the model.
+        actual_default_rates (np.ndarray): The observed default rates (or target values).
+    Returns:
+        np.ndarray: Calibrated probabilities.
+    """
+    if len(predicted_probabilities) != len(actual_default_rates):
+        st.warning("Predicted probabilities and actual default rates must have the same length for calibration.")
+        return predicted_probabilities
+
+    if predicted_probabilities.size == 0:
+        st.info("No probabilities to calibrate.")
+        return np.array([])
+
+    overall_observed_default_rate = actual_default_rates.mean()
+    overall_predicted_mean_proba = predicted_probabilities.mean()
+
+    if overall_predicted_mean_proba == 0 and overall_observed_default_rate > 0:
+        st.warning("Mean predicted probability is zero, but observed default rate is not. Cannot scale. Returning original probabilities.")
+        return predicted_probabilities
+    elif overall_predicted_mean_proba == 0 and overall_observed_default_rate == 0:
+        st.info("Both predicted mean probability and observed default rate are zero. No calibration needed.")
+        return predicted_probabilities
+
+    scaling_factor = overall_observed_default_rate / overall_predicted_mean_proba
+    calibrated_probabilities = predicted_probabilities * scaling_factor
+    
+    # Ensure probabilities remain within [0, 1]
+    calibrated_probabilities = np.clip(calibrated_probabilities, 0, 1)
+
+    st.write(f"Original Mean Predicted Probability: {overall_predicted_mean_proba:.4f}")
+    st.write(f"Overall Observed Default Rate: {overall_observed_default_rate:.4f}")
+    st.write(f"Calibration Scaling Factor: {scaling_factor:.4f}")
+    st.write(f"Calibrated Mean Predicted Probability: {calibrated_probabilities.mean():.4f}")
+
+    return calibrated_probabilities
+
+def map_pd_to_rating_grades(predicted_probabilities, num_grades):
+    """Maps predicted PDs to rating grades using a quantile-based approach.
+    Args:
+        predicted_probabilities (pd.Series): Predicted probabilities of default.
+        num_grades (int): The desired number of discrete rating grades.
+    Returns:
+        tuple: (pd.Series: Rating grades assigned to each prediction, pd.Series: Grade cutoffs).
+    """
+    if predicted_probabilities.empty:
+        return pd.Series([], dtype='int'), pd.Series([])
+
+    if num_grades <= 0:
+        st.error("Number of grades must be positive.")
+        return pd.Series([], dtype='int'), pd.Series([])
+
+    # Sort probabilities for consistent quantile calculation
+    sorted_probs = predicted_probabilities.sort_values()
+
+    # Calculate quantiles for grade cutoffs. We need num_grades - 1 cutoffs.
+    # For `qcut` to work, quantiles must be strictly increasing. 
+    # Use np.unique to handle duplicate quantile values which can occur with discrete distributions.
+    q_values = np.linspace(0, 1, num_grades + 1)
+    
+    # Use pd.qcut to discretize into grades. Labels will be 0 to num_grades-1.
+    # Using duplicates='drop' means if some quantiles are identical, fewer bins might be created.
+    # We want labels from 1 to num_grades. So add 1.
+    grades, bins = pd.qcut(predicted_probabilities, q=q_values, labels=False, retbins=True, duplicates='drop')
+    grades = grades + 1 # Adjust to 1-indexed grades
+    grades.name = "Rating_Grade"
+
+    # Extract actual cutoffs from `bins` (which are the edges of the quantiles)
+    # The bins array has num_grades + 1 elements, corresponding to the (num_grades) intervals.
+    # We want the upper bound of each interval as a cutoff for the next grade.
+    # The last element is the max prob, which is not a 
